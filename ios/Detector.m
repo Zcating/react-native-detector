@@ -1,19 +1,34 @@
 #import "Detector.h"
 
-@implementation Detector
+@implementation Detector {
+    bool isCapturedNotificationSent;
+}
 
 RCT_EXPORT_MODULE();
 
 - (NSArray<NSString *> *)supportedEvents {
-    return @[@"UIApplicationUserDidTakeScreenshotNotification"];
+    return @[
+        @"UIApplicationUserDidTakeScreenshotNotification",
+        @"UIScreenCapturedDidChangeNotification"
+    ];
 }
 
 - (void)startObserving {
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
     [center addObserver:self
-    selector:@selector(sendNotificationToRN:)
-    name:UIApplicationUserDidTakeScreenshotNotification
-    object:nil];
+               selector:@selector(sendNotificationToRN:)
+                   name:UIApplicationUserDidTakeScreenshotNotification
+                 object:nil];
+
+    [center addObserver:self
+               selector:@selector(sendScreenCapturedNotification:)
+                   name:UIScreenCapturedDidChangeNotification
+                 object:nil];
+    
+    [center addObserver:self
+               selector:@selector(sendScreenCapturedNotification:)
+                   name:UIApplicationDidBecomeActiveNotification
+                 object:nil];
 
 }
 
@@ -24,6 +39,18 @@ RCT_EXPORT_MODULE();
 - (void)sendNotificationToRN:(NSNotification *)notification {
     [self sendEventWithName:notification.name
                    body:nil];
+}
+
+- (void)sendScreenCapturedNotification:(NSNotification *)notification {
+    if (![UIScreen mainScreen].isCaptured) {
+        isCapturedNotificationSent = NO;
+        return;
+    }
+    if (isCapturedNotificationSent) {
+        return;
+    }
+    isCapturedNotificationSent = YES;
+    [self sendEventWithName:@"UIScreenCapturedDidChangeNotification" body:nil];
 }
 
 @end
